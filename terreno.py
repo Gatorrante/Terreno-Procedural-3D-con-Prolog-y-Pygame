@@ -91,10 +91,6 @@ def generate_poly_row(y):
 
         polygons = [[poly_copy, c]] + polygons
 
-def interpolate_color(color1, color2, factor):
-    return tuple(int(color1[i] + (color2[i] - color1[i]) * factor) for i in range(3))
-
-
 # Configuración del terreno
 poly_data = {
     'pos': [0, 0, 4.5],
@@ -124,13 +120,13 @@ for x in range(100):
         v = (v + 1) / 2
         noise_surf.set_at((x, y), (v * 255, v * 255, v * 255))
 
+bg_surf = pygame.Surface(screen.get_size())
+bg_surf.fill((100, 200, 250))
+bg_surf.set_alpha(120)
+
 while True:
-    bg_surf = pygame.Surface(screen.get_size())
-    bg_surf.fill((100, 200, 250))
     display = screen.copy()
     display.blit(bg_surf, (0, 0))
-
-    bg_surf.set_alpha(120)
 
     poly_data['pos'][2] -= 0.25
 
