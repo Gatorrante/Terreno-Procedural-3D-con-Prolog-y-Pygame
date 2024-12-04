@@ -143,7 +143,11 @@ while True:
         for v in poly2:
             v[1] = 100 - v[1] * 0.2
             v[0] = 500 - v[0]
-        pygame.draw.polygon(display, polygon[1], render_poly)
+        # Asegurarse de que el color es una tupla RGB válida
+        if isinstance(polygon[1], tuple) and len(polygon[1]) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in polygon[1]):
+            pygame.draw.polygon(display, polygon[1], render_poly)
+        else:
+            print(f"Color inválido: {polygon[1]}")
         d = polygon[0][0][1]
         if d < 5:
             pygame.draw.polygon(display, (min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255)), poly2)
