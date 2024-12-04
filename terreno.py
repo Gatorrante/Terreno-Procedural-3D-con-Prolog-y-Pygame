@@ -14,6 +14,32 @@ clock = pygame.time.Clock()
 FOV = 90
 FOG = True
 
+prolog = Prolog()
+prolog.consult("generador.pl")  # Consulta de parametros de prolog
+
+altura_cache = {}
+color_cache = {}
+
+def get_altura(x, y):
+    if (x, y) in altura_cache:
+        return altura_cache[(x, y)]
+    perlin_value = noise.pnoise2(x / 10, y / 10)
+    altura_query = list(prolog.query(f"altura({x}, {y}, {perlin_value}, Altura)"))
+    altura = altura_query[0]['Altura'] if altura_query else 0
+    altura_cache[(x, y)] = altura
+    return altura
+
+def interpolate_color(color1, color2, factor):
+    return tuple(int(color1[i] + (color2[i] - color1[i]) * factor) for i in range(3))
+
+def get_color(altura):
+    if altura in color_cache:
+        return color_cache[altura]
+    color_query = list(prolog.query(f"color({altura}, R, G, B)"))
+    color = tuple(color_query[0][channel] for channel in ['R', 'G', 'B']) if color_query else (255, 255, 255)
+    color_cache[altura] = color
+    return color
+
 def offset_polygon(polygon, offset):
     for point in polygon:
         point[0] += offset[0]
@@ -35,6 +61,40 @@ def gen_polygon(polygon_base, polygon_data):
     offset_polygon(generated_polygon, polygon_data['pos'])
     return project_polygon(generated_polygon)
 
+def generate_poly_row(y):
+    global polygons
+    for x in range(30):
+        poly_copy = deepcopy(square_polygon)
+        offset_polygon(poly_copy, [x - 15, 5, y + 5])
+
+        water = True
+        depth = 0
+
+        for corner in poly_copy:
+            v = noise.pnoise2(corner[0] / 10, corner[2] / 10, octaves=2) * 3
+            v2 = noise.pnoise2(corner[0] / 30 + 1000, corner[2] / 30)
+            if v < 0:
+                depth -= v
+                v = 0
+            else:
+                water = False
+            corner[1] -= v * 4.5
+
+        # Generar colores suavizados según altura
+        altura_promedio = sum(corner[1] for corner in poly_copy) / len(poly_copy)
+        if water:
+            color_agua = interpolate_color((0, 50, 150), (0, 120, 255), min(1, depth / 10))
+            c = color_agua
+        else:
+            color_terreno = interpolate_color((139, 69, 19), (34, 139, 34), min(1, (altura_promedio - 1) / 4))
+            c = color_terreno
+
+        polygons = [[poly_copy, c]] + polygons
+
+def interpolate_color(color1, color2, factor):
+    return tuple(int(color1[i] + (color2[i] - color1[i]) * factor) for i in range(3))
+
+
 # Configuración del terreno
 poly_data = {
     'pos': [0, 0, 4.5],
@@ -49,42 +109,6 @@ square_polygon = [
 ]
 
 polygons = []
-prolog = Prolog()
-prolog.consult("generador.pl")  # Consulta de parametros de prolog
-
-altura_cache = {}
-color_cache = {}
-
-def get_altura(x, y):
-    if (x, y) in altura_cache:
-        return altura_cache[(x, y)]
-    perlin_value = noise.pnoise2(x / 10, y / 10)
-    altura_query = list(prolog.query(f"altura({x}, {y}, {perlin_value}, Altura)"))
-    altura = altura_query[0]['Altura'] if altura_query else 0
-    altura_cache[(x, y)] = altura
-    return altura
-
-def get_color(altura):
-    if altura in color_cache:
-        return color_cache[altura]
-    color_query = list(prolog.query(f"color({altura}, R, G, B)"))
-    color = tuple(color_query[0][channel] for channel in ['R', 'G', 'B']) if color_query else (255, 255, 255)
-    color_cache[altura] = color
-    return color
-
-def generate_poly_row(y):
-    global polygons
-    for x in range(50):
-        poly_copy = deepcopy(square_polygon)
-        offset_polygon(poly_copy, [x - 25, 5, y + 5])
-
-        for corner in poly_copy:
-            corner[1] -= get_altura(corner[0], corner[2])
-
-        altura_promedio = sum(corner[1] for corner in poly_copy) / len(poly_copy)
-        color = get_color(altura_promedio)
-
-        polygons.insert(0, [poly_copy, color])
 
 # Generar filas
 next_row = 0
@@ -105,6 +129,7 @@ while True:
     bg_surf.fill((100, 200, 250))
     display = screen.copy()
     display.blit(bg_surf, (0, 0))
+
     bg_surf.set_alpha(120)
 
     poly_data['pos'][2] -= 0.25
