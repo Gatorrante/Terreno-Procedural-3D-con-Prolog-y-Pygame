@@ -11,15 +11,19 @@ pygame.display.set_caption('Terreno procedural 3D con Prolog | Proyecto de Inves
 screen = pygame.display.set_mode((500, 500))
 clock = pygame.time.Clock()
 
+# Configuración de la cámara
 FOV = 90
 FOG = True
 
+# Inicialización de Prolog
 prolog = Prolog()
-prolog.consult("generador.pl")  # Consulta de parametros de prolog
+prolog.consult("generador.pl")  # Consulta de parámetros de Prolog
 
+# Cachés para almacenar alturas y colores calculados
 altura_cache = {}
 color_cache = {}
 
+# Función para obtener la altura de un punto (x, y)
 def get_altura(x, y):
     if (x, y) in altura_cache:
         return altura_cache[(x, y)]
@@ -29,9 +33,11 @@ def get_altura(x, y):
     altura_cache[(x, y)] = altura
     return altura
 
+# Función para interpolar entre dos colores
 def interpolate_color(color1, color2, factor):
     return tuple(int(color1[i] + (color2[i] - color1[i]) * factor) for i in range(3))
 
+# Función para obtener el color basado en la altura
 def get_color(altura):
     if altura in color_cache:
         return color_cache[altura]
@@ -40,12 +46,14 @@ def get_color(altura):
     color_cache[altura] = color
     return color
 
+# Función para desplazar un polígono por un offset dado
 def offset_polygon(polygon, offset):
     for point in polygon:
         point[0] += offset[0]
         point[1] += offset[1]
         point[2] += offset[2]
 
+# Función para proyectar un polígono 3D en 2D
 def project_polygon(polygon):
     projected_points = []
     for point in polygon:
@@ -56,16 +64,18 @@ def project_polygon(polygon):
         projected_points.append([x, y])
     return projected_points
 
+# Función para generar un polígono desplazado y proyectado
 def gen_polygon(polygon_base, polygon_data):
-    generated_polygon = deepcopy(polygon_base)
+    generated_polygon = [point[:] for point in polygon_base]  # Evitar deepcopy
     offset_polygon(generated_polygon, polygon_data['pos'])
     return project_polygon(generated_polygon)
 
+# Función para generar una fila de polígonos
 def generate_poly_row(y):
     global polygons
-    for x in range(30):
-        poly_copy = deepcopy(square_polygon)
-        offset_polygon(poly_copy, [x - 15, 5, y + 5])
+    for x in range(50):  # Aumenta el número de columnas de 40 a 50
+        poly_copy = [point[:] for point in square_polygon]  # Evitar deepcopy
+        offset_polygon(poly_copy, [x - 25, 5, y + 5])  # Ajusta el desplazamiento en x
 
         water = True
         depth = 0
@@ -91,12 +101,22 @@ def generate_poly_row(y):
 
         polygons = [[poly_copy, c]] + polygons
 
+# Función para generar un plano de agua
+def generate_water_plane(x_offset, y_offset):
+    water_polygon = [point[:] for point in square_polygon]  # Evitar deepcopy
+    offset_polygon(water_polygon, [x_offset, 5, y_offset])
+    for corner in water_polygon:
+        corner[1] = 0  # Altura de agua (nivel del mar)
+    color_agua = interpolate_color((0, 50, 150), (0, 120, 255), 1)
+    polygons.append([water_polygon, color_agua])
+
 # Configuración del terreno
 poly_data = {
     'pos': [0, 0, 4.5],
     'rot': [0, 0, 0],
 }
 
+# Definición del polígono base (cuadrado)
 square_polygon = [
     [-0.5, 0.5, -0.5],
     [0.5, 0.5, -0.5],
@@ -104,13 +124,20 @@ square_polygon = [
     [-0.5, 0.5, 0.5],
 ]
 
+# Lista de polígonos generados
 polygons = []
 
-# Generar filas
+# Generar filas de terreno
 next_row = 0
 for y in range(26):
     generate_poly_row(y)
     next_row += 1
+
+# Generar planos de agua a los costados
+for i in range(-25, -20):  # Genera más planos de agua a la izquierda
+    generate_water_plane(i, 5)
+for i in range(20, 25):  # Genera más planos de agua a la derecha
+    generate_water_plane(i, 5)
 
 # Generar ruido para las nubes
 noise_surf = pygame.Surface((100, 100))
@@ -120,26 +147,58 @@ for x in range(100):
         v = (v + 1) / 2
         noise_surf.set_at((x, y), (v * 255, v * 255, v * 255))
 
+# Fondo del cielo
 bg_surf = pygame.Surface(screen.get_size())
 bg_surf.fill((100, 200, 250))
 bg_surf.set_alpha(120)
 
+# Sol
+sun_pos = [450, 100]  # Posición inicial del sol (más abajo)
+sun_radius = 40  # Radio del sol
+sun_color_start = (255, 255, 0)  # Color amarillo del sol (inicio)
+sun_color_end = (255, 165, 0)  # Color naranja del sol (fin)
+
+# Función para dibujar un círculo con gradiente
+def draw_gradient_circle(surface, color_start, color_end, center, radius):
+    for i in range(radius):
+        color = interpolate_color(color_start, color_end, i / radius)
+        pygame.draw.circle(surface, color, center, radius - i)
+
+# Bucle principal del juego
 while True:
     display = screen.copy()
     display.blit(bg_surf, (0, 0))
 
+    # Control de la posición y rotación de la cámara
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT]:
+        poly_data['pos'][0] -= 0.1
+        poly_data['rot'][1] -= 0.5  # Rotación hacia la izquierda
+    if keys[pygame.K_RIGHT]:
+        poly_data['pos'][0] += 0.1
+        poly_data['rot'][1] += 0.5  # Rotación hacia la derecha
+    if keys[pygame.K_UP]:
+        poly_data['pos'][2] -= 0.1
+    if keys[pygame.K_DOWN]:
+        poly_data['pos'][2] += 0.1
+
+    # Limitar la rotación para evitar mirar hacia atrás
+    poly_data['rot'][1] = max(-45, min(45, poly_data['rot'][1]))  # Rango limitado de rotación
+
     poly_data['pos'][2] -= 0.25
 
+    # Generar nuevas filas de terreno si es necesario
     if polygons[-1][0][0][2] < -poly_data['pos'][2]:
         polygons = polygons[:-30]
         generate_poly_row(next_row)
         next_row += 1
 
+    # Dibujar los polígonos
     for i, polygon in enumerate(polygons):
         if FOG and (i % 90 == 0) and (i != 0) and (i < 30 * 18):
             display.blit(bg_surf, (0, 0))
         render_poly = gen_polygon(polygon[0], poly_data)
-        poly2 = deepcopy(render_poly)
+        poly2 = [point[:] for point in render_poly]  # Evitar deepcopy
         for v in poly2:
             v[1] = 100 - v[1] * 0.2
             v[0] = 500 - v[0]
@@ -152,13 +211,19 @@ while True:
         if d < 5:
             pygame.draw.polygon(display, (min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255)), poly2)
 
+    # Dibuja el sol con gradiente
+    draw_gradient_circle(display, sun_color_start, sun_color_end, sun_pos, sun_radius)
+
+    # Aplicar transparencia y actualizar la pantalla
     display.set_alpha(150)
     screen.blit(display, (0, 0))
 
+    # Manejar eventos
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
 
+    # Actualizar la pantalla
     pygame.display.flip()
     clock.tick(60)
