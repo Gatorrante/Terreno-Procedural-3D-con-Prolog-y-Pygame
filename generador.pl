@@ -1,5 +1,5 @@
 % Reglas para determinar la altura de un punto según ruido 
-altura(X, _Y, Perlin, Altura) :-  % Eliminamos la variable Y ya que no se usa
+altura(X, _Y, Perlin, Altura) :-  
     BaseAltura is Perlin * 10,
     (BaseAltura > 0 -> Altura is BaseAltura; Altura is 0),
     (X > -1, X < 1 -> Altura is 0; true).  % Río en el centro

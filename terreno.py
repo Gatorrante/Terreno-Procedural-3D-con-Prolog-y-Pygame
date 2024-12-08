@@ -1,3 +1,13 @@
+"""
+Proyecto Final: Terreno Procedural 3D con Prolog y Pygame
+Curso: Programación Lógica y Funcional
+
+Este proyecto genera un terreno 3D de manera procedural utilizando ruido Perlin y reglas definidas en Prolog.
+El terreno se renderiza en tiempo real utilizando Pygame. La altura y el color del terreno se determinan
+mediante consultas a Prolog, lo que permite una generación dinámica y variada del paisaje.
+
+Se han agregado comentarios para facilitar la comprensión del código.
+"""
 import pygame
 import sys
 import math
@@ -5,25 +15,25 @@ from copy import deepcopy
 from pyswip import Prolog
 import noise
 
-# Inicialización de Pygame
+# Inicialización de Pygame y configuración de la ventana
 pygame.init()
 pygame.display.set_caption('Terreno procedural 3D con Prolog | Proyecto de Investigación | UTP')
 screen = pygame.display.set_mode((500, 500))
 clock = pygame.time.Clock()
 
-# Configuración de la cámara
+# Configuración de la cámara y efectos visuales
 FOV = 90
 FOG = True
 
-# Inicialización de Prolog
+# Inicialización de Prolog y consulta del archivo de reglas
 prolog = Prolog()
-prolog.consult("generador.pl")  # Consulta de parámetros de Prolog
+prolog.consult("generador.pl")
 
 # Cachés para almacenar alturas y colores calculados
 altura_cache = {}
 color_cache = {}
 
-# Función para obtener la altura de un punto (x, y)
+# Función para obtener la altura de un punto (x, y) utilizando ruido Perlin y Prolog
 def get_altura(x, y):
     if (x, y) in altura_cache:
         return altura_cache[(x, y)]
@@ -37,7 +47,7 @@ def get_altura(x, y):
 def interpolate_color(color1, color2, factor):
     return tuple(int(color1[i] + (color2[i] - color1[i]) * factor) for i in range(3))
 
-# Función para obtener el color basado en la altura
+# Función para obtener el color según la altura utilizando Prolog
 def get_color(altura):
     if altura in color_cache:
         return color_cache[altura]
@@ -46,7 +56,7 @@ def get_color(altura):
     color_cache[altura] = color
     return color
 
-# Función para desplazar un polígono por un offset dado
+# Función para desplazar un polígono según un offset
 def offset_polygon(polygon, offset):
     for point in polygon:
         point[0] += offset[0]
@@ -66,16 +76,16 @@ def project_polygon(polygon):
 
 # Función para generar un polígono desplazado y proyectado
 def gen_polygon(polygon_base, polygon_data):
-    generated_polygon = [point[:] for point in polygon_base]  # Evitar deepcopy
+    generated_polygon = [point[:] for point in polygon_base]  
     offset_polygon(generated_polygon, polygon_data['pos'])
     return project_polygon(generated_polygon)
 
-# Función para generar una fila de polígonos
+# Función para generar una fila de polígonos del terreno
 def generate_poly_row(y):
     global polygons
-    for x in range(50):  # Aumenta el número de columnas de 40 a 50
-        poly_copy = [point[:] for point in square_polygon]  # Evitar deepcopy
-        offset_polygon(poly_copy, [x - 25, 5, y + 5])  # Ajusta el desplazamiento en x
+    for x in range(50):  
+        poly_copy = [point[:] for point in square_polygon]  
+        offset_polygon(poly_copy, [x - 25, 5, y + 5])  
 
         water = True
         depth = 0
@@ -90,7 +100,6 @@ def generate_poly_row(y):
                 water = False
             corner[1] -= v * 4.5
 
-        # Generar colores suavizados según altura
         altura_promedio = sum(corner[1] for corner in poly_copy) / len(poly_copy)
         if water:
             color_agua = interpolate_color((0, 50, 150), (0, 120, 255), min(1, depth / 10))
@@ -103,16 +112,16 @@ def generate_poly_row(y):
 
 # Función para generar un plano de agua
 def generate_water_plane(x_offset, y_offset):
-    water_polygon = [point[:] for point in square_polygon]  # Evitar deepcopy
+    water_polygon = [point[:] for point in square_polygon] 
     offset_polygon(water_polygon, [x_offset, 5, y_offset])
     for corner in water_polygon:
-        corner[1] = 0  # Altura de agua (nivel del mar)
+        corner[1] = 0 
     color_agua = interpolate_color((0, 50, 150), (0, 120, 255), 1)
     polygons.append([water_polygon, color_agua])
 
-# Configuración del terreno
+# Datos iniciales de la cámara y el terreno
 poly_data = {
-    'pos': [0, 0, 4.5],
+    'pos': [0, 0, 0],
     'rot': [0, 0, 0],
 }
 
@@ -127,16 +136,16 @@ square_polygon = [
 # Lista de polígonos generados
 polygons = []
 
-# Generar filas de terreno
+# Generar filas de terreno iniciales
 next_row = 0
 for y in range(26):
     generate_poly_row(y)
     next_row += 1
 
 # Generar planos de agua a los costados
-for i in range(-25, -20):  # Genera más planos de agua a la izquierda
+for i in range(-25, -20): 
     generate_water_plane(i, 5)
-for i in range(20, 25):  # Genera más planos de agua a la derecha
+for i in range(20, 25):  
     generate_water_plane(i, 5)
 
 # Generar ruido para las nubes
@@ -152,11 +161,11 @@ bg_surf = pygame.Surface(screen.get_size())
 bg_surf.fill((100, 200, 250))
 bg_surf.set_alpha(120)
 
-# Sol
-sun_pos = [450, 100]  # Posición inicial del sol (más abajo)
-sun_radius = 40  # Radio del sol
-sun_color_start = (255, 255, 0)  # Color amarillo del sol (inicio)
-sun_color_end = (255, 165, 0)  # Color naranja del sol (fin)
+# Configuración del sol
+sun_pos = [450, 100]
+sun_radius = 40
+sun_color_start = (255, 255, 0)
+sun_color_end = (255, 165, 0)
 
 # Función para dibujar un círculo con gradiente
 def draw_gradient_circle(surface, color_start, color_end, center, radius):
@@ -164,26 +173,24 @@ def draw_gradient_circle(surface, color_start, color_end, center, radius):
         color = interpolate_color(color_start, color_end, i / radius)
         pygame.draw.circle(surface, color, center, radius - i)
 
+# Velocidad constante para el movimiento de la cámara
+camera_move_speed = 0.1
+
 # Bucle principal del juego
 while True:
     display = screen.copy()
     display.blit(bg_surf, (0, 0))
 
-    # Control de la posición y rotación de la cámara
+    # Control de la posición con las teclas W, A, S, D
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        poly_data['pos'][0] -= 0.1
-        poly_data['rot'][1] -= 0.5  # Rotación hacia la izquierda
-    if keys[pygame.K_RIGHT]:
-        poly_data['pos'][0] += 0.1
-        poly_data['rot'][1] += 0.5  # Rotación hacia la derecha
-    if keys[pygame.K_UP]:
-        poly_data['pos'][2] -= 0.1
-    if keys[pygame.K_DOWN]:
-        poly_data['pos'][2] += 0.1
-
-    # Limitar la rotación para evitar mirar hacia atrás
-    poly_data['rot'][1] = max(-45, min(45, poly_data['rot'][1]))  # Rango limitado de rotación
+    if keys[pygame.K_w]:
+        poly_data['pos'][2] -= camera_move_speed
+    if keys[pygame.K_s]:
+        poly_data['pos'][2] += camera_move_speed
+    if keys[pygame.K_a]:
+        poly_data['pos'][0] += camera_move_speed
+    if keys[pygame.K_d]:
+        poly_data['pos'][0] -= camera_move_speed
 
     poly_data['pos'][2] -= 0.25
 
@@ -198,11 +205,10 @@ while True:
         if FOG and (i % 90 == 0) and (i != 0) and (i < 30 * 18):
             display.blit(bg_surf, (0, 0))
         render_poly = gen_polygon(polygon[0], poly_data)
-        poly2 = [point[:] for point in render_poly]  # Evitar deepcopy
+        poly2 = [point[:] for point in render_poly]
         for v in poly2:
             v[1] = 100 - v[1] * 0.2
             v[0] = 500 - v[0]
-        # Asegurarse de que el color es una tupla RGB válida
         if isinstance(polygon[1], tuple) and len(polygon[1]) == 3 and all(isinstance(c, int) and 0 <= c <= 255 for c in polygon[1]):
             pygame.draw.polygon(display, polygon[1], render_poly)
         else:
@@ -211,7 +217,7 @@ while True:
         if d < 5:
             pygame.draw.polygon(display, (min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255)), poly2)
 
-    # Dibuja el sol con gradiente
+    # Dibujar el sol con gradiente
     draw_gradient_circle(display, sun_color_start, sun_color_end, sun_pos, sun_radius)
 
     # Aplicar transparencia y actualizar la pantalla
@@ -226,4 +232,4 @@ while True:
 
     # Actualizar la pantalla
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(120)
