@@ -1,5 +1,5 @@
-[![English](https://img.shields.io/badge/lang-English-blue)](#english)
-[![Español](https://img.shields.io/badge/lang-Español-red)](#español)
+[![English](https://img.shields.io/badge/lang-English-blue)](#english) [![Español](https://img.shields.io/badge/lang-Español-red)](#español)
+--------------------------------------------------------------------------------------------------------------------------------------------
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
 [![Pygame](https://img.shields.io/badge/Pygame-2.0.1-green)](https://www.pygame.org/)
 [![Prolog](https://img.shields.io/badge/Prolog-SWI--Prolog-orange)](https://www.swi-prolog.org/)
